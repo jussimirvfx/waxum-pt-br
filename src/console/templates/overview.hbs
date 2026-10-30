@@ -1,20 +1,20 @@
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="/" aria-label="Waxum home">
+    <a class="brand" href="/" aria-label="Página inicial do Waxum">
       <img src="/assets/logo.png" alt="" class="brand-mark" width="32" height="32">
       <span>Waxum</span>
-      <span class="brand-chip">Console</span>
+      <span class="brand-chip">Painel</span>
     </a>
     <span class="spacer"></span>
     <span class="version">v{{version}}</span>
     <a class="topbar-link" href="/swagger-ui" target="_blank" rel="noopener">
       <svg class="icon sm"><use href="#i-book"/></svg>
-      API docs
+      Documentação da API
     </a>
     <form method="post" action="/logout" style="margin:0">
       <button type="submit" class="btn sm ghost">
         <svg class="icon sm"><use href="#i-power"/></svg>
-        Sign out
+        Sair
       </button>
     </form>
   </div>
@@ -64,13 +64,13 @@
   }
 
   const CLOUD_FIELDS = [
-    { name: 'waba_id', label: 'WhatsApp Business Account ID', required: true, placeholder: '102290129340398' },
-    { name: 'phone_number_id', label: 'Phone number ID', required: true, placeholder: '106540352242922' },
-    { name: 'access_token', label: 'Access token (system user)', required: true, secret: true, placeholder: 'EAAG…' },
-    { name: 'app_secret', label: 'App secret', required: true, secret: true, hint: 'Verifies the signature on webhooks Meta sends.' },
-    { name: 'webhook_verify_token', label: 'Webhook verify token', required: true, hint: 'Any string you choose; paste the same value into Meta.' },
-    { name: 'business_id', label: 'Business ID (optional)', placeholder: '102290129340399', hint: 'Needed for owned/client WABAs, credit lines, system users.' },
-    { name: 'app_id', label: 'App ID (optional)', hint: 'Needed for the business profile photo upload.' },
+    { name: 'waba_id', label: 'ID da conta do WhatsApp Business', required: true, placeholder: '102290129340398' },
+    { name: 'phone_number_id', label: 'ID do número de telefone', required: true, placeholder: '106540352242922' },
+    { name: 'access_token', label: 'Token de acesso (usuário do sistema)', required: true, secret: true, placeholder: 'EAAG…' },
+    { name: 'app_secret', label: 'Segredo do aplicativo', required: true, secret: true, hint: 'Verifica a assinatura dos webhooks enviados pela Meta.' },
+    { name: 'webhook_verify_token', label: 'Token de verificação do webhook', required: true, hint: 'Escolha um texto e cadastre o mesmo valor na Meta.' },
+    { name: 'business_id', label: 'ID da empresa (opcional)', placeholder: '102290129340399', hint: 'Necessário para WABAs próprias ou de clientes, linhas de crédito e usuários do sistema.' },
+    { name: 'app_id', label: 'ID do aplicativo (opcional)', hint: 'Necessário para enviar a foto do perfil comercial.' },
   ];
 
   let newSessionChannel = 'web';
@@ -79,29 +79,29 @@
     newSessionChannel = 'web';
     showDrawer(`
       <header class="drawer-head">
-        <div class="drawer-title">New session</div>
-        <button class="btn ghost sm" onclick="closeDrawer()" aria-label="Close"><svg class="icon"><use href="#i-x"/></svg></button>
+        <div class="drawer-title">Nova sessão</div>
+        <button class="btn ghost sm" onclick="closeDrawer()" aria-label="Fechar"><svg class="icon"><use href="#i-x"/></svg></button>
       </header>
       <form class="drawer-body" id="new-session-form" onsubmit="submitNewSession(event)">
         <div class="field">
-          <span class="label">Channel</span>
+          <span class="label">Canal</span>
           <div class="choice-grid">
             <button type="button" class="choice web selected" id="choice-web" onclick="pickChannel('web')">
               <span class="channel web"><svg class="icon sm"><use href="#i-link"/></svg>WhatsApp Web</span>
-              <span class="choice-title">Link a phone</span>
-              <span class="hint">Scan a QR with the WhatsApp app. Works with any number, including groups, calls and contacts.</span>
+              <span class="choice-title">Vincular um telefone</span>
+              <span class="hint">Leia um QR Code com o WhatsApp do telefone. Permite usar grupos, chamadas e contatos.</span>
             </button>
             <button type="button" class="choice cloud" id="choice-cloud" onclick="pickChannel('cloud')">
               <span class="channel cloud"><svg class="icon sm"><use href="#i-cloud"/></svg>Cloud API</span>
-              <span class="choice-title">Meta's official API</span>
-              <span class="hint">A number registered in a Meta app. Templates, Flows and catalogs; no groups or calls.</span>
+              <span class="choice-title">API oficial da Meta</span>
+              <span class="hint">Número cadastrado em um aplicativo da Meta. Oferece modelos de mensagem, Flows e catálogos; sem grupos ou chamadas neste canal.</span>
             </button>
           </div>
         </div>
         <div class="field">
-          <label for="ns-id">Session ID</label>
-          <input id="ns-id" name="id" type="text" autocomplete="off" required pattern="[A-Za-z0-9_-]+" placeholder="marketing-jakarta">
-          <div class="hint">Letters, digits, dashes and underscores. This is the id in every API path.</div>
+          <label for="ns-id">ID da sessão</label>
+          <input id="ns-id" name="id" type="text" autocomplete="off" required pattern="[A-Za-z0-9_-]+" placeholder="atendimento-vfx">
+          <div class="hint">Use letras, números, hífens e sublinhados. Este ID será usado nas rotas da API.</div>
         </div>
         <div id="ns-cloud-fields" hidden>${CLOUD_FIELDS.map(f => `
           <div class="field" style="margin-bottom:12px">
@@ -109,12 +109,12 @@
             <input id="cf-${f.name}" name="${f.name}" type="${f.secret ? 'password' : 'text'}" autocomplete="off" placeholder="${esc(f.placeholder)}">
             ${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}
           </div>`).join('')}
-          <div class="hint">The access token and app secret are stored on the server and never shown again.</div>
+          <div class="hint">O token de acesso e o segredo do aplicativo são armazenados no servidor e não são exibidos novamente.</div>
         </div>
         <div id="ns-error" class="err" hidden></div>
         <div class="btn-row">
-          <button type="submit" class="btn primary" id="ns-submit">Create session</button>
-          <button type="button" class="btn" onclick="closeDrawer()">Cancel</button>
+          <button type="submit" class="btn primary" id="ns-submit">Criar sessão</button>
+          <button type="button" class="btn" onclick="closeDrawer()">Cancelar</button>
         </div>
       </form>`);
     document.getElementById('ns-id').focus();
@@ -157,7 +157,7 @@
         body: JSON.stringify(body),
       });
       if (res.ok) { location.href = '/s/' + encodeURIComponent(id); return; }
-      let msg = 'Could not create the session (' + res.status + ')';
+      let msg = 'Não foi possível criar a sessão (' + res.status + ')';
       try { const j = await res.json(); msg = (j.error && j.error.message) || j.message || msg; } catch (_) {}
       errEl.textContent = msg;
       errEl.hidden = false;

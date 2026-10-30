@@ -1,27 +1,27 @@
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="/" aria-label="Waxum home">
+    <a class="brand" href="/" aria-label="Página inicial do Waxum">
       <img src="/assets/logo.png" alt="" class="brand-mark" width="32" height="32">
       <span>Waxum</span>
-      <span class="brand-chip">Console</span>
+      <span class="brand-chip">Painel</span>
     </a>
     <span class="spacer"></span>
     <span class="version">v{{version}}</span>
     <a class="topbar-link" href="/swagger-ui" target="_blank" rel="noopener">
       <svg class="icon sm"><use href="#i-book"/></svg>
-      API docs
+      Documentação da API
     </a>
     <form method="post" action="/logout" style="margin:0">
       <button type="submit" class="btn sm ghost">
         <svg class="icon sm"><use href="#i-power"/></svg>
-        Sign out
+        Sair
       </button>
     </form>
   </div>
 </header>
 
 <main class="page">
-  <div class="crumbs"><a href="/">Sessions</a> / {{session_id}}</div>
+  <div class="crumbs"><a href="/">Sessões</a> / {{session_id}}</div>
 
   <section class="session-head {{#if cloud}}cloud{{else}}web{{/if}}">
     <div>
@@ -37,25 +37,25 @@
       </div>
       <div class="hint session-channel-note">
         {{#if cloud}}
-        A number on Meta's official Cloud API. It needs no QR and has no
-        socket to drop. Templates, Flows, catalogs and analytics are
-        available; groups, calls, contacts and presence are not.
+        Número na Cloud API oficial da Meta, sem vínculo por QR Code.
+        Oferece modelos de mensagem, Flows, catálogos e estatísticas.
+        Grupos, chamadas, contatos e presença não estão disponíveis neste canal.
         {{else}}
-        A linked WhatsApp Web device. Everything the WhatsApp app can do is
-        available, including groups and calls. Cloud API features
-        (templates, Flows, analytics) are not.
+        Aparelho vinculado pelo WhatsApp Web, com recursos como grupos e chamadas.
+        Os recursos exclusivos da Cloud API, como modelos de mensagem, Flows
+        e estatísticas, não estão disponíveis neste canal.
         {{/if}}
       </div>
     </div>
     <div class="btn-row" id="head-actions">
       {{#unless cloud}}
-      <button class="btn primary" id="act-connect" onclick="consoleAction('connect')" hidden>Connect</button>
-      <button class="btn" id="act-disconnect" onclick="consoleAction('disconnect')" hidden>Disconnect</button>
-      <button class="btn" id="act-logout" onclick="confirmLogout()" hidden>Log out</button>
+      <button class="btn primary" id="act-connect" onclick="consoleAction('connect')" hidden>Conectar</button>
+      <button class="btn" id="act-disconnect" onclick="consoleAction('disconnect')" hidden>Desconectar</button>
+      <button class="btn" id="act-logout" onclick="confirmLogout()" hidden>Desvincular</button>
       {{/unless}}
       <button class="btn danger" onclick="confirmDelete()">
         <svg class="icon sm"><use href="#i-trash"/></svg>
-        Delete
+        Excluir
       </button>
     </div>
   </section>
@@ -64,67 +64,67 @@
     {{#if cloud}}
     <article class="panel cloud-panel wide">
       <header class="panel-head">
-        <span class="panel-title">Cloud API connection</span>
+        <span class="panel-title">Conexão com a Cloud API</span>
         <span class="panel-note">Meta WhatsApp Cloud API</span>
       </header>
       <div class="panel-body" style="display:flex;flex-direction:column;gap:20px">
         <div class="kv">
-          <div class="field"><label>WABA ID</label><span class="val">{{#if cloud.waba_id}}{{cloud.waba_id}}{{else}}—{{/if}}</span></div>
-          <div class="field"><label>Phone number ID</label><span class="val">{{#if cloud.phone_number_id}}{{cloud.phone_number_id}}{{else}}—{{/if}}</span></div>
-          <div class="field"><label>Business ID</label><span class="val">{{#if cloud.business_id}}{{cloud.business_id}}{{else}}<span class="muted">not set</span>{{/if}}</span></div>
-          <div class="field"><label>App ID</label><span class="val">{{#if cloud.app_id}}{{cloud.app_id}}{{else}}<span class="muted">not set</span>{{/if}}</span></div>
+          <div class="field"><label>ID da WABA</label><span class="val">{{#if cloud.waba_id}}{{cloud.waba_id}}{{else}}—{{/if}}</span></div>
+          <div class="field"><label>ID do número de telefone</label><span class="val">{{#if cloud.phone_number_id}}{{cloud.phone_number_id}}{{else}}—{{/if}}</span></div>
+          <div class="field"><label>ID da empresa</label><span class="val">{{#if cloud.business_id}}{{cloud.business_id}}{{else}}<span class="muted">não informado</span>{{/if}}</span></div>
+          <div class="field"><label>ID do aplicativo</label><span class="val">{{#if cloud.app_id}}{{cloud.app_id}}{{else}}<span class="muted">não informado</span>{{/if}}</span></div>
         </div>
         <div class="field">
-          <label>Webhook callback URL</label>
-          <div class="copy-row"><code id="cloud-webhook-url"></code><button type="button" class="btn sm" data-copy="cloud-webhook-url">Copy</button></div>
-          <div class="hint">Paste into your Meta app under WhatsApp → Configuration → Callback URL, with the verify token you set for this session, then subscribe to the <b>messages</b> field.</div>
+          <label>URL de retorno do webhook</label>
+          <div class="copy-row"><code id="cloud-webhook-url"></code><button type="button" class="btn sm" data-copy="cloud-webhook-url">Copiar</button></div>
+          <div class="hint">Cole no aplicativo da Meta em WhatsApp → Configuração → URL de retorno, com o token de verificação desta sessão. Depois, assine o campo <b>messages</b>.</div>
         </div>
         <div class="field">
-          <label>Flow endpoint URL</label>
-          <div class="copy-row"><code id="cloud-flow-url"></code><button type="button" class="btn sm" data-copy="cloud-flow-url">Copy</button></div>
-          <div class="hint">Use as a Flow's <b>endpoint_uri</b> after configuring the endpoint under <b>Cloud · Flows</b> in the API explorer.</div>
+          <label>URL do endpoint do Flow</label>
+          <div class="copy-row"><code id="cloud-flow-url"></code><button type="button" class="btn sm" data-copy="cloud-flow-url">Copiar</button></div>
+          <div class="hint">Use como <b>endpoint_uri</b> do Flow após configurar o endpoint em <b>Cloud · Flows</b> no explorador da API.</div>
         </div>
       </div>
     </article>
     {{else}}
     <article class="panel wide" id="connection-panel">
       <header class="panel-head">
-        <span class="panel-title">Connection</span>
+        <span class="panel-title">Conexão</span>
         <span class="panel-note" id="connection-note"></span>
       </header>
 
       <div id="linked-view" class="panel-body" hidden>
         <div class="kv">
-          <div class="field"><label>Number</label><span class="val" id="lv-phone">—</span></div>
-          <div class="field"><label>Name</label><span class="val" id="lv-name">—</span></div>
-          <div class="field"><label>Last data from WhatsApp</label><span class="val" id="lv-last">—</span></div>
-          <div class="field"><label>Messages forwarded</label><span class="val" id="lv-forwarded">—</span></div>
+          <div class="field"><label>Número</label><span class="val" id="lv-phone">—</span></div>
+          <div class="field"><label>Nome</label><span class="val" id="lv-name">—</span></div>
+          <div class="field"><label>Últimos dados recebidos do WhatsApp</label><span class="val" id="lv-last">—</span></div>
+          <div class="field"><label>Mensagens encaminhadas</label><span class="val" id="lv-forwarded">—</span></div>
         </div>
       </div>
 
       <div id="pair-panel" class="pair-panel pair-body" hidden>
-        <div id="pair-qr" class="pair-qr"><div class="hint">Waiting for a QR from WhatsApp…</div></div>
+        <div id="pair-qr" class="pair-qr"><div class="hint">Aguardando QR Code do WhatsApp…</div></div>
         <div class="pair-side">
           <div>
-            <div class="panel-title">Link this session to a phone</div>
+            <div class="panel-title">Vincular esta sessão a um telefone</div>
             <ol class="steps">
-              <li>Open WhatsApp on the phone.</li>
-              <li>Go to <b>Linked devices</b> and tap <b>Link a device</b>.</li>
-              <li>Point the camera at this code. It refreshes on its own.</li>
+              <li>Abra o WhatsApp no telefone.</li>
+              <li>Acesse <b>Aparelhos conectados</b> e toque em <b>Conectar um aparelho</b>.</li>
+              <li>Aponte a câmera para este código. Ele é atualizado automaticamente.</li>
             </ol>
           </div>
           <div class="hint" id="pair-dormant-note" hidden>
-            This session is not linked right now. Its webhooks, settings and
-            stored messages are kept; linking again continues where it left off.
+            Esta sessão está desvinculada. Os webhooks, as configurações e as mensagens
+            armazenadas foram preservados para continuar após um novo vínculo.
           </div>
           <details>
-            <summary class="hint" style="cursor:pointer">No camera? Link with the phone number instead</summary>
+            <summary class="hint" style="cursor:pointer">Sem câmera? Vincule pelo número de telefone</summary>
             <div class="inline-form" style="margin-top:12px">
               <div class="field">
-                <label for="pair-phone">Phone number, international format</label>
-                <input id="pair-phone" type="text" placeholder="628123456789" autocomplete="off">
+                <label for="pair-phone">Telefone no formato internacional</label>
+                <input id="pair-phone" type="text" placeholder="5511999999999" autocomplete="off">
               </div>
-              <button id="pair-request" type="button" class="btn">Get code</button>
+              <button id="pair-request" type="button" class="btn">Obter código</button>
             </div>
             <div id="pair-code" class="pair-code" style="margin-top:12px" hidden></div>
             <div id="pair-code-hint" class="hint" hidden></div>
@@ -138,23 +138,23 @@
     <article class="panel{{#if cloud}} wide{{/if}}">
       <header class="panel-head">
         <span class="panel-title">Webhooks</span>
-        <span class="panel-note">where this session's events are delivered</span>
+        <span class="panel-note">destinos dos eventos desta sessão</span>
       </header>
-      <div id="webhook-list" class="rows"><div class="empty">Loading…</div></div>
+      <div id="webhook-list" class="rows"><div class="empty">Carregando…</div></div>
       <form class="panel-foot" id="webhook-form">
         <div class="inline-form">
           <div class="field" style="flex:3 1 240px">
-            <label for="wh-url">Add a webhook URL</label>
+            <label for="wh-url">Adicionar URL de webhook</label>
             <input id="wh-url" type="url" placeholder="https://example.com/hooks/whatsapp" required>
           </div>
           <div class="field">
-            <label for="wh-events">Events</label>
+            <label for="wh-events">Eventos</label>
             <select id="wh-events">
-              <option value="all">All events</option>
-              <option value="message">Messages only</option>
+              <option value="all">Todos os eventos</option>
+              <option value="message">Apenas mensagens</option>
             </select>
           </div>
-          <button type="submit" class="btn">Add</button>
+          <button type="submit" class="btn">Adicionar</button>
         </div>
         <div id="webhook-error" class="err" style="margin-top:8px" hidden></div>
       </form>
@@ -163,32 +163,32 @@
     {{#unless cloud}}
     <article class="panel">
       <header class="panel-head">
-        <span class="panel-title">New chats</span>
-        <span class="panel-note">conversations started with numbers this session never talked to</span>
+        <span class="panel-title">Novas conversas</span>
+        <span class="panel-note">conversas iniciadas com números novos nesta sessão</span>
       </header>
       <div class="panel-body" style="display:flex;flex-direction:column;gap:16px">
         <div class="counters">
-          <div class="counter"><div class="counter-num" id="nc-3">—</div><div class="counter-label">last 3 h</div></div>
-          <div class="counter"><div class="counter-num" id="nc-6">—</div><div class="counter-label">last 6 h</div></div>
-          <div class="counter"><div class="counter-num" id="nc-12">—</div><div class="counter-label">last 12 h</div></div>
-          <div class="counter"><div class="counter-num" id="nc-24">—</div><div class="counter-label">last 24 h</div></div>
+          <div class="counter"><div class="counter-num" id="nc-3">—</div><div class="counter-label">últimas 3 h</div></div>
+          <div class="counter"><div class="counter-num" id="nc-6">—</div><div class="counter-label">últimas 6 h</div></div>
+          <div class="counter"><div class="counter-num" id="nc-12">—</div><div class="counter-label">últimas 12 h</div></div>
+          <div class="counter"><div class="counter-num" id="nc-24">—</div><div class="counter-label">últimas 24 h</div></div>
         </div>
         <div class="hint">
-          WhatsApp restricts accounts that start too many new chats. Set a
-          ceiling and waxum refuses sends to new numbers past it, while
-          existing chats keep working. Only chats started through waxum are counted.
+          O WhatsApp pode restringir contas que iniciam muitas conversas. Defina um
+          limite para bloquear novos destinatários após atingi-lo, mantendo
+          as conversas existentes. Apenas conversas iniciadas pelo Waxum são contadas.
         </div>
         <form class="inline-form" id="nc-form">
           <div class="field">
-            <label for="nc-max">Max new chats</label>
-            <input id="nc-max" type="number" min="1" placeholder="no limit">
+            <label for="nc-max">Máximo de novas conversas</label>
+            <input id="nc-max" type="number" min="1" placeholder="sem limite">
           </div>
           <div class="field">
-            <label for="nc-window">per hours</label>
+            <label for="nc-window">a cada (horas)</label>
             <input id="nc-window" type="number" min="1" max="720" value="24">
           </div>
-          <button type="submit" class="btn">Save</button>
-          <button type="button" class="btn ghost" id="nc-clear" hidden>Remove limit</button>
+          <button type="submit" class="btn">Salvar</button>
+          <button type="button" class="btn ghost" id="nc-clear" hidden>Remover limite</button>
         </form>
         <div id="nc-state" class="hint"></div>
         <div id="nc-incidents"></div>
@@ -200,7 +200,7 @@
   <section class="explorer">
     <aside class="ex-nav">
       <div class="ex-nav-head">
-        <input id="pg-filter" type="text" placeholder="Search endpoints" autocomplete="off" spellcheck="false">
+        <input id="pg-filter" type="text" placeholder="Buscar operações da API" autocomplete="off" spellcheck="false">
       </div>
       <nav id="pg-sidebar-tree" class="ex-list"></nav>
     </aside>
@@ -208,19 +208,19 @@
     <div class="ex-main">
       <div class="ex-bar">
         <span class="ex-method" id="pg-method"></span>
-        <code class="ex-url" id="pg-url">Select an endpoint</code>
-        <button type="button" class="btn sm" id="pg-curl" hidden>Copy curl</button>
-        <button type="button" class="btn sm primary" id="pg-send" hidden>Send</button>
+        <code class="ex-url" id="pg-url">Selecione uma operação</code>
+        <button type="button" class="btn sm" id="pg-curl" hidden>Copiar curl</button>
+        <button type="button" class="btn sm primary" id="pg-send" hidden>Enviar</button>
       </div>
       <div class="ex-panes">
         <div class="ex-pane">
-          <div class="ex-pane-title" id="pg-current-label">Request</div>
+          <div class="ex-pane-title" id="pg-current-label">Requisição</div>
           <div id="pg-form" class="ex-form">
-            <p class="muted">Choose an endpoint on the left. Its parameters appear here.</p>
+            <p class="muted">Escolha uma operação à esquerda para ver os parâmetros.</p>
           </div>
         </div>
         <div class="ex-pane">
-          <div class="ex-pane-title">Response <span id="pg-result-status" class="ex-status"></span></div>
+          <div class="ex-pane-title">Resposta <span id="pg-result-status" class="ex-status"></span></div>
           <pre id="pg-result-body" class="ex-response"></pre>
         </div>
       </div>
@@ -252,20 +252,20 @@
     try { json = await res.json(); } catch (_) {}
     return { ok: res.ok, status: res.status, json };
   }
-  const errorOf = (r) => (r.json && ((r.json.error && r.json.error.message) || r.json.message)) || ('Request failed (' + r.status + ')');
+  const errorOf = (r) => (r.json && ((r.json.error && r.json.error.message) || r.json.message)) || ('Falha na requisição (' + r.status + ')');
 
   function ago(unixSeconds) {
     if (!unixSeconds) return '—';
     const s = Math.max(0, Math.floor(Date.now() / 1000 - unixSeconds));
-    if (s < 60) return s + ' s ago';
-    if (s < 3600) return Math.floor(s / 60) + ' min ago';
-    if (s < 86400) return Math.floor(s / 3600) + ' h ago';
-    return Math.floor(s / 86400) + ' d ago';
+    if (s < 60) return 'há ' + s + ' s';
+    if (s < 3600) return 'há ' + Math.floor(s / 60) + ' min';
+    if (s < 86400) return 'há ' + Math.floor(s / 3600) + ' h';
+    return 'há ' + Math.floor(s / 86400) + ' d';
   }
   function duration(seconds) {
     if (seconds < 90) return seconds + ' s';
     if (seconds < 5400) return Math.round(seconds / 60) + ' min';
-    return (seconds / 3600).toFixed(1) + ' h';
+    return (seconds / 3600).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' h';
   }
 
   /* ---- header actions ---- */
@@ -283,24 +283,24 @@
     }
   }
   window.confirmLogout = function () {
-    if (confirm('Log "' + sid + '" out of WhatsApp?\n\nThe phone will no longer list this device. The session, its webhooks, settings and stored messages are kept: connect and scan again to continue.')) {
+    if (confirm('Desvincular "' + sid + '" do WhatsApp?\n\nO aparelho será removido do telefone. A sessão, os webhooks, as configurações e as mensagens serão preservados. Conecte e leia o QR Code novamente para continuar.')) {
       consoleAction('logout');
     }
   };
   window.confirmDelete = function () {
-    if (confirm('Delete "' + sid + '" for good?\n\nThis removes the session, its webhooks, settings and stored login. It cannot be undone.' + (provider === 'cloud' ? '' : '\n\nTo only unlink the phone and keep everything else, use Log out instead.'))) {
+    if (confirm('Excluir "' + sid + '" permanentemente?\n\nIsso remove a sessão, os webhooks, as configurações e o vínculo armazenado. Esta ação não pode ser desfeita.' + (provider === 'cloud' ? '' : '\n\nPara remover apenas o vínculo do telefone e preservar os dados, use Desvincular.'))) {
       consoleAction('delete');
     }
   };
 
   /* ---- status ---- */
   const STATUS = {
-    logged_in: ['connected', 'Connected'],
-    connected: ['connecting', 'Logging in'],
-    connecting: ['connecting', 'Connecting'],
-    waiting_for_qr: ['pairing', 'Waiting for QR scan'],
-    waiting_for_pair_code: ['pairing', 'Waiting for pair code'],
-    disconnected: ['idle', 'Disconnected'],
+    logged_in: ['connected', 'Conectada'],
+    connected: ['connecting', 'Autenticando'],
+    connecting: ['connecting', 'Conectando'],
+    waiting_for_qr: ['pairing', 'Aguardando leitura do QR Code'],
+    waiting_for_pair_code: ['pairing', 'Aguardando código de vínculo'],
+    disconnected: ['idle', 'Desconectada'],
   };
 
   async function refreshStatus() {
@@ -313,14 +313,14 @@
     if (provider === 'cloud') {
       const st = $('head-status');
       st.className = 'status connected';
-      st.textContent = 'Ready';
+      st.textContent = 'Pronta';
       return;
     }
 
     const [cls, label] = STATUS[s.status] || ['idle', s.status];
     const st = $('head-status');
     st.className = 'status ' + cls;
-    st.textContent = s.paused ? 'Paused' : label;
+    st.textContent = s.paused ? 'Pausada' : label;
     setText('head-phone', s.phone_number || '');
 
     const linked = s.is_logged_in === true && s.status === 'logged_in';
@@ -333,18 +333,18 @@
     show('linked-view', linked);
     show('pair-panel', !linked);
     show('pair-dormant-note', s.status === 'disconnected');
-    setText('connection-note', linked ? 'linked and online' : pairing ? 'scan to link' : busy ? 'connecting to WhatsApp' : 'not connected');
+    setText('connection-note', linked ? 'vinculada e conectada' : pairing ? 'leia o código para vincular' : busy ? 'conectando ao WhatsApp' : 'desconectada');
     if (linked) {
       setText('lv-phone', s.phone_number || '—');
       setText('lv-name', s.push_name || '—');
       setText('lv-last', ago(d.last_data_received_at));
       setText('lv-forwarded', String(d.messages_forwarded == null ? '—' : d.messages_forwarded));
     } else if (s.status === 'disconnected') {
-      $('pair-qr').innerHTML = '<div class="hint">Not connected. Press <b>Connect</b> to get a QR.</div>';
+      $('pair-qr').innerHTML = '<div class="hint">Desconectada. Clique em <b>Conectar</b> para obter um QR Code.</div>';
     } else if (pairing) {
       await refreshQr();
     } else if (busy && !$('pair-qr').querySelector('svg')) {
-      $('pair-qr').innerHTML = '<div class="hint">Waiting for a QR from WhatsApp…</div>';
+      $('pair-qr').innerHTML = '<div class="hint">Aguardando QR Code do WhatsApp…</div>';
     }
 
     const nc = d.new_chats || {};
@@ -367,35 +367,35 @@
   function renderWebhooks(hooks) {
     const el = $('webhook-list');
     if (!hooks.length) {
-      el.innerHTML = '<div class="empty">No webhooks. Events for this session are not delivered anywhere yet.</div>';
+      el.innerHTML = '<div class="empty">Nenhum webhook cadastrado. Os eventos desta sessão ainda não têm um destino.</div>';
       return;
     }
     el.innerHTML = hooks.map(w => {
       let chip;
       let detail = '';
       if (!w.enabled) {
-        chip = '<span class="chip">Disabled</span>';
+        chip = '<span class="chip">Desativado</span>';
       } else if (w.circuit_open) {
-        chip = '<span class="chip bad">Suspended</span>';
-        detail = 'Deliveries failed repeatedly. Next attempt in ' + duration(w.retry_in_seconds || 0) + '; it resumes on its own once the receiver answers.';
+        chip = '<span class="chip bad">Suspenso</span>';
+        detail = 'Houve falhas repetidas nas entregas. Nova tentativa em ' + duration(w.retry_in_seconds || 0) + '; as entregas são retomadas automaticamente quando o destino responder.';
       } else if (w.consecutive_failures > 0) {
-        chip = '<span class="chip warn">' + w.consecutive_failures + ' failed in a row</span>';
+        chip = '<span class="chip warn">' + w.consecutive_failures + ' falhas seguidas</span>';
       } else {
-        chip = '<span class="chip ok">Delivering</span>';
+        chip = '<span class="chip ok">Entregando</span>';
       }
-      if (w.last_error) detail += (detail ? ' ' : '') + 'Last error: ' + w.last_error + '.';
-      if (w.skipped_while_suspended) detail += ' ' + w.skipped_while_suspended + ' event(s) skipped while suspended.';
+      if (w.last_error) detail += (detail ? ' ' : '') + 'Último erro: ' + w.last_error + '.';
+      if (w.skipped_while_suspended) detail += ' ' + w.skipped_while_suspended + ' evento(s) ignorado(s) durante a suspensão.';
       return '<div class="row"><div class="row-main">' +
         '<div class="row-url">' + esc(w.url) + '</div>' +
-        '<div class="btn-row">' + chip + (w.receives_messages ? '' : '<span class="chip">no message events</span>') + '</div>' +
+        '<div class="btn-row">' + chip + (w.receives_messages ? '' : '<span class="chip">sem eventos de mensagem</span>') + '</div>' +
         (detail ? '<div class="hint">' + esc(detail) + '</div>' : '') +
         '</div><div class="btn-row">' +
-        (!w.enabled ? '<button class="btn sm" data-wh-enable="' + esc(w.id) + '">Enable</button>' : '') +
-        '<button class="btn sm ghost" data-wh-remove="' + esc(w.id) + '">Remove</button>' +
+        (!w.enabled ? '<button class="btn sm" data-wh-enable="' + esc(w.id) + '">Ativar</button>' : '') +
+        '<button class="btn sm ghost" data-wh-remove="' + esc(w.id) + '">Remover</button>' +
         '</div></div>';
     }).join('');
     el.querySelectorAll('[data-wh-remove]').forEach(b => b.addEventListener('click', async () => {
-      if (!confirm('Remove this webhook?')) return;
+      if (!confirm('Remover este webhook?')) return;
       await call('DELETE', api + '/webhooks/' + encodeURIComponent(b.dataset.whRemove));
       refreshStatus();
     }));
@@ -422,16 +422,16 @@
     $('nc-window').value = limit ? limit.window_hours : 24;
     show('nc-clear', !!limit);
     let state = limit
-      ? 'Limit: ' + limit.max_new_chats + ' new chats per ' + limit.window_hours + ' h.'
-      : 'No limit set. Nothing is refused.';
-    if (body.retry_after_seconds) state += ' Reached: the next new chat is allowed in ' + duration(body.retry_after_seconds) + '.';
+      ? 'Limite: ' + limit.max_new_chats + ' novas conversas a cada ' + limit.window_hours + ' h.'
+      : 'Nenhum limite definido. Os envios não são bloqueados por este controle.';
+    if (body.retry_after_seconds) state += ' Limite atingido: próxima nova conversa permitida em ' + duration(body.retry_after_seconds) + '.';
     setText('nc-state', state);
     const incidents = body.incidents || [];
     $('nc-incidents').innerHTML = incidents.length
-      ? '<div class="label" style="margin-bottom:6px">When WhatsApp logged this session out</div>' +
+      ? '<div class="label" style="margin-bottom:6px">Desvinculações registradas pelo WhatsApp</div>' +
         incidents.slice(0, 5).map(i =>
-          '<div class="hint">' + esc(new Date(i.occurred_at * 1000).toLocaleString()) + ' · ' + esc(i.reason) +
-          ' · new chats: ' + i.new_chats.last_3h + ' / ' + i.new_chats.last_6h + ' / ' + i.new_chats.last_12h + ' / ' + i.new_chats.last_24h +
+          '<div class="hint">' + esc(new Date(i.occurred_at * 1000).toLocaleString('pt-BR')) + ' · ' + esc(i.reason) +
+          ' · novas conversas: ' + i.new_chats.last_3h + ' / ' + i.new_chats.last_6h + ' / ' + i.new_chats.last_12h + ' / ' + i.new_chats.last_24h +
           ' (3 / 6 / 12 / 24 h)</div>').join('')
       : '';
   }
@@ -443,7 +443,7 @@
     $('nc-form').addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const max = Number($('nc-max').value);
-      if (!max) { setText('nc-state', 'Enter how many new chats to allow, or use Remove limit.'); return; }
+      if (!max) { setText('nc-state', 'Informe o máximo de novas conversas ou clique em Remover limite.'); return; }
       const r = await call('PUT', api + '/settings/new-chat-limit', { max_new_chats: max, window_hours: Number($('nc-window').value) || 24 });
       if (r.ok) renderLimit(r.json); else setText('nc-state', errorOf(r));
     });
@@ -459,9 +459,9 @@
   document.querySelectorAll('[data-copy]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const text = $(btn.dataset.copy).textContent;
-      try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; }
-      catch (_) { btn.textContent = 'Select and copy'; }
-      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      try { await navigator.clipboard.writeText(text); btn.textContent = 'Copiado'; }
+      catch (_) { btn.textContent = 'Selecione e copie'; }
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 1500);
     });
   });
 
@@ -471,20 +471,20 @@
       const errEl = $('pair-error');
       errEl.hidden = true; show('pair-code', false); show('pair-code-hint', false);
       const phone = $('pair-phone').value.trim();
-      if (!phone) { errEl.textContent = 'Enter the phone number first.'; errEl.hidden = false; return; }
+      if (!phone) { errEl.textContent = 'Informe o número de telefone primeiro.'; errEl.hidden = false; return; }
       $('pair-request').disabled = true;
       try {
         const r = await call('POST', api + '/pair', { phone_number: phone, show_push_notification: true });
         if (!r.ok) { errEl.textContent = errorOf(r); errEl.hidden = false; return; }
         const code = ((r.json && r.json.code) || '').trim().toUpperCase();
         if (!code) {
-          errEl.textContent = 'Still connecting to WhatsApp. Try again in a few seconds.';
+          errEl.textContent = 'Ainda conectando ao WhatsApp. Tente novamente em alguns segundos.';
           errEl.hidden = false;
           return;
         }
         $('pair-code').textContent = code.length === 8 ? code.slice(0, 4) + '-' + code.slice(4) : code;
         show('pair-code', true);
-        $('pair-code-hint').innerHTML = 'On the phone: <b>Linked devices → Link with phone number instead</b>, then type this code.';
+        $('pair-code-hint').innerHTML = 'No telefone: <b>Aparelhos conectados → Conectar com número de telefone</b>. Depois, digite este código.';
         show('pair-code-hint', true);
       } finally {
         $('pair-request').disabled = false;
@@ -501,7 +501,7 @@
   });
   const usable = endpoints.filter(e => !e.unavailable);
   const unusable = endpoints.filter(e => e.unavailable);
-  const otherChannel = provider === 'cloud' ? 'a linked WhatsApp Web session' : 'a Cloud API session';
+  const otherChannel = provider === 'cloud' ? 'uma sessão vinculada pelo WhatsApp Web' : 'uma sessão da Cloud API';
 
   const sidebarEl = $('pg-sidebar-tree');
   const formEl = $('pg-form');
@@ -561,7 +561,7 @@
       section.className = 'ex-unavailable';
       const head = document.createElement('div');
       head.className = 'ex-section';
-      head.textContent = 'Needs ' + otherChannel;
+      head.textContent = 'Requer ' + otherChannel;
       section.appendChild(head);
       const keep = sidebarEl;
       Array.from(new Set(unusable.map(e => e.group))).forEach(g => {
@@ -570,10 +570,62 @@
       });
       keep.appendChild(section);
     }
-    if (!sidebarEl.children.length) sidebarEl.innerHTML = '<p class="muted" style="padding:12px">No endpoint matches.</p>';
+    if (!sidebarEl.children.length) sidebarEl.innerHTML = '<p class="muted" style="padding:12px">Nenhuma operação encontrada.</p>';
   }
 
   $('pg-filter').addEventListener('input', (ev) => { filter = ev.target.value.trim().toLowerCase(); renderSidebar(); });
+
+  // Translate display labels only; API enum values remain unchanged.
+  const OPTION_LABELS = {
+  "audio": "Áudio",
+  "video": "Vídeo",
+  "voice": "Voz",
+  "available": "Disponível",
+  "unavailable": "Indisponível",
+  "composing": "Digitando",
+  "recording": "Gravando",
+  "paused": "Pausada",
+  "inactive": "Inativas",
+  "logged_out": "Desvinculadas",
+  "disconnected": "Desconectadas",
+  "all": "Todas",
+  "incremental": "Incremental",
+  "snapshot": "Completo",
+  "navigate": "Navegar",
+  "data_exchange": "Troca de dados",
+  "off": "Desativada",
+  "on": "Ativada",
+  "processing": "Em processamento",
+  "partially_shipped": "Enviado parcialmente",
+  "shipped": "Enviado",
+  "completed": "Concluído",
+  "canceled": "Cancelado",
+  "published": "Publicado",
+  "draft": "Rascunho",
+  "admin_add": "Administradores",
+  "all_member_add": "Todos os membros",
+  "admin_link": "Administradores",
+  "all_member_link": "Todos os membros",
+  "SMS": "SMS",
+  "VOICE": "Ligação",
+  "UTILITY": "Utilidade",
+  "MARKETING": "Marketing",
+  "AUTHENTICATION": "Autenticação",
+  "DAY": "Dia",
+  "DAILY": "Diária",
+  "HOUR": "Hora",
+  "HALF_HOUR": "Meia hora",
+  "MONTH": "Mês",
+  "MONTHLY": "Mensal",
+  "LIFETIME": "Todo o período",
+  "IN": "Índia",
+  "SG": "Singapura",
+  "ENDPOINT_REQUEST_COUNT": "Quantidade de requisições",
+  "ENDPOINT_REQUEST_ERROR": "Erros nas requisições",
+  "ENDPOINT_REQUEST_ERROR_RATE": "Taxa de erros",
+  "ENDPOINT_REQUEST_LATENCY_SECONDS_CEIL": "Latência das requisições (segundos)",
+  "ENDPOINT_AVAILABILITY": "Disponibilidade do endpoint"
+};
 
   function renderForm() {
     const ep = activeEndpoint;
@@ -590,11 +642,11 @@
     resBodyEl.textContent = '';
 
     if (ep.unavailable) {
-      formEl.innerHTML = '<p>This endpoint needs ' + otherChannel + '. It is not available on this session.</p>';
+      formEl.innerHTML = '<p>Esta operação requer ' + otherChannel + '. Ela não está disponível nesta sessão.</p>';
       return;
     }
     if (!ep.fields.length) {
-      formEl.innerHTML = '<p class="muted">No parameters.</p>';
+      formEl.innerHTML = '<p class="muted">Sem parâmetros.</p>';
       return;
     }
     ep.fields.forEach(f => {
@@ -602,7 +654,7 @@
       row.className = 'ex-field';
       const name = document.createElement('span');
       name.className = 'ex-field-name';
-      name.innerHTML = '<code>' + esc(f.name) + '</code>' + (f.required ? '<em>required</em>' : '') +
+      name.innerHTML = '<code>' + esc(f.name) + '</code>' + (f.required ? '<em>obrigatório</em>' : '') +
         (f.label && f.label !== f.name ? '<small>' + esc(f.label) + '</small>' : '');
       row.appendChild(name);
       let input;
@@ -614,7 +666,7 @@
         input = document.createElement('select');
         (f.options || []).forEach(opt => {
           const o = document.createElement('option');
-          o.value = opt; o.textContent = opt;
+          o.value = opt; o.textContent = OPTION_LABELS[opt] || opt;
           input.appendChild(o);
         });
       } else {
@@ -643,7 +695,7 @@
       else if (t === 'json') {
         if (el.value.trim()) {
           try { values[el.name] = JSON.parse(el.value); }
-          catch (e) { throw new Error('"' + el.name + '" is not valid JSON: ' + e.message); }
+          catch (e) { throw new Error('"' + el.name + '" não contém JSON válido: ' + e.message); }
         }
       }
       else if (t === 'textarea') values[el.name] = el.value;
@@ -665,7 +717,7 @@
   }
 
   function fail(message) {
-    resStatusEl.textContent = 'not sent';
+    resStatusEl.textContent = 'não enviado';
     resStatusEl.className = 'ex-status bad';
     resBodyEl.textContent = message;
   }
@@ -675,7 +727,7 @@
     const ep = activeEndpoint;
     const values = collectValues();
     const missing = ep.fields.filter(f => f.required && !filled(values[f.name])).map(f => f.name);
-    if (missing.length) throw new Error('Required: ' + missing.join(', '));
+    if (missing.length) throw new Error('Campos obrigatórios: ' + missing.join(', '));
 
     let path = ep.path.replace('{sid}', enc);
     const body = {};
@@ -708,7 +760,7 @@
       opts.headers['content-type'] = 'application/json';
       opts.body = JSON.stringify(req.json);
     }
-    resStatusEl.textContent = 'sending';
+    resStatusEl.textContent = 'enviando';
     resStatusEl.className = 'ex-status';
     resBodyEl.textContent = '';
     const started = performance.now();
@@ -737,9 +789,9 @@
     let cmd = 'curl -X ' + req.method + ' ' + quote(location.origin + req.path) + ' \\\n  -H ' + quote('Authorization: Bearer $WAXUM_TOKEN');
     if (req.form) cmd += ' \\\n  -F ' + quote('file=@/path/to/file');
     else if (req.json !== undefined) cmd += ' \\\n  -H ' + quote('Content-Type: application/json') + ' \\\n  -d ' + quote(JSON.stringify(req.json));
-    try { await navigator.clipboard.writeText(cmd); $('pg-curl').textContent = 'Copied'; }
+    try { await navigator.clipboard.writeText(cmd); $('pg-curl').textContent = 'Copiado'; }
     catch (_) { resBodyEl.textContent = cmd; }
-    setTimeout(() => { $('pg-curl').textContent = 'Copy curl'; }, 1500);
+    setTimeout(() => { $('pg-curl').textContent = 'Copiar curl'; }, 1500);
   });
 
   function renderRecordingPlayer(body) {
@@ -750,8 +802,8 @@
     host.id = 'pg-recording';
     host.className = 'ex-recording';
     host.innerHTML =
-      '<div>Peer audio, ready after the call ends: <code>' + esc(body.recording_url) + '</code> ' +
-      '<button type="button" class="btn sm" id="pg-recording-reload">Reload</button></div>' +
+      '<div>Áudio do interlocutor, disponível após a chamada: <code>' + esc(body.recording_url) + '</code> ' +
+      '<button type="button" class="btn sm" id="pg-recording-reload">Recarregar</button></div>' +
       '<audio id="pg-recording-audio" controls preload="none" src="' + esc(body.recording_url) + '"></audio>';
     resBodyEl.parentElement.appendChild(host);
     $('pg-recording-reload').addEventListener('click', () => {

@@ -3,19 +3,19 @@
     <div class="login-brand">
       <img src="/assets/logo.png" alt="" width="48" height="48" class="brand-mark">
       <div>
-        <div class="login-title">Waxum Console</div>
-        <div class="hint">Sign in to manage sessions</div>
+        <div class="login-title">Painel Waxum</div>
+        <div class="hint">Entre para gerenciar as sessões</div>
       </div>
     </div>
     <div class="field">
-      <label for="token">Superadmin token</label>
-      <input type="password" id="token" name="token" placeholder="paste SUPERADMIN_TOKEN" autofocus required>
+      <label for="token">Token de administrador</label>
+      <input type="password" id="token" name="token" placeholder="Cole o SUPERADMIN_TOKEN" autofocus required>
     </div>
-    <button class="btn primary" type="submit">Sign in</button>
+    <button class="btn primary" type="submit">Entrar</button>
     {{#if error}}<div class="err">{{error}}</div>{{/if}}
     <div class="hint">
-      The token you set in <code>SUPERADMIN_TOKEN</code>. If you did not set
-      one, waxum printed a generated one in its log on first start.
+      Use o token definido em <code>SUPERADMIN_TOKEN</code>. Se ele não foi
+      definido, o Waxum gerou um token no primeiro início e o registrou no log.
     </div>
   </form>
 </div>

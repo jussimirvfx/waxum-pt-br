@@ -125,7 +125,7 @@ async fn cloud_session_page_shows_the_cloud_panel_not_qr_pairing() {
     let overview = String::from_utf8(overview).unwrap();
     assert!(overview.contains("channel cloud"));
     assert!(overview.contains("Cloud API"));
-    assert!(overview.contains(r#"<span class="status connected">Ready</span>"#));
+    assert!(overview.contains(r#"<span class="status connected">Pronta</span>"#));
 }
 
 #[tokio::test]

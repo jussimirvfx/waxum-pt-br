@@ -5513,7 +5513,7 @@ dependencies = [
 
 [[package]]
 name = "waxum"
-version = "0.16.1"
+version = "0.16.1-pt-br.1"
 dependencies = [
  "aes-gcm 0.10.3",
  "anyhow",

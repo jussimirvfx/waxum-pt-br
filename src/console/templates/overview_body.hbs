@@ -1,44 +1,44 @@
 <section class="stats">
   <div class="stat">
-    <div class="stat-label">Connected</div>
+    <div class="stat-label">Conectadas</div>
     <div class="stat-num">{{connected}}<span class="of"> / {{total}}</span></div>
-    <div class="stat-foot">sessions able to send and receive</div>
+    <div class="stat-foot">sessões prontas para enviar e receber</div>
   </div>
   <div class="stat {{#if pairing_count}}warn{{/if}}">
-    <div class="stat-label">Waiting to be linked</div>
+    <div class="stat-label">Aguardando vínculo</div>
     <div class="stat-num">{{pairing_count}}</div>
-    <div class="stat-foot">showing a QR or connecting</div>
+    <div class="stat-foot">exibindo QR Code ou conectando</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Disconnected</div>
+    <div class="stat-label">Desconectadas</div>
     <div class="stat-num">{{disconnected_count}}</div>
-    <div class="stat-foot">kept with their data, can be connected again</div>
+    <div class="stat-foot">dados preservados para reconectar</div>
   </div>
   <div class="stat {{#if circuits_open}}alert{{/if}}">
     <div class="stat-label">Webhooks</div>
     <div class="stat-num">{{webhook_count}}</div>
-    <div class="stat-foot">{{#if circuits_open}}{{circuits_open}} suspended after failed deliveries{{else}}all delivering{{/if}}</div>
+    <div class="stat-foot">{{#if circuits_open}}{{circuits_open}} suspensos após falhas nas entregas{{else}}entregas ativas{{/if}}</div>
   </div>
 </section>
 
 <section class="overview-grid">
   <article class="panel">
     <header class="panel-head">
-      <span class="panel-title">Sessions</span>
+      <span class="panel-title">Sessões</span>
       {{#if has_sessions}}<span class="panel-note">{{sessions_count}}</span>{{/if}}
       <span class="spacer"></span>
       <button class="btn primary" onclick="openNewSession()">
         <svg class="icon sm"><use href="#i-plus"/></svg>
-        New session
+        Nova sessão
       </button>
     </header>
     {{#if has_sessions}}
     <table class="table">
       <thead>
         <tr>
-          <th>Session</th>
-          <th>Channel</th>
-          <th class="hide-sm">Number</th>
+          <th>Sessão</th>
+          <th>Canal</th>
+          <th class="hide-sm">Número</th>
           <th>Status</th>
           <th class="hide-sm">Webhooks</th>
           <th></th>
@@ -62,22 +62,22 @@
           <td><span class="status {{status_class}}">{{status_label}}</span></td>
           <td class="hide-sm">
             {{#if webhooks_suspended}}
-            <span class="chip bad">{{webhooks_suspended}} of {{webhooks}} suspended</span>
+            <span class="chip bad">{{webhooks_suspended}} de {{webhooks}} suspensos</span>
             {{else}}{{#if webhooks}}
-            <span class="chip ok">{{webhooks}} delivering</span>
+            <span class="chip ok">{{webhooks}} entregando</span>
             {{else}}
-            <span class="chip">none</span>
+            <span class="chip">nenhum</span>
             {{/if}}{{/if}}
           </td>
           <td>
             <span class="btn-row" style="justify-content:flex-end">
               {{#if can_connect}}
-              <button class="btn sm" onclick="event.stopPropagation();sessionAction('{{id}}','connect')">Connect</button>
+              <button class="btn sm" onclick="event.stopPropagation();sessionAction('{{id}}','connect')">Conectar</button>
               {{/if}}
               {{#if can_disconnect}}
-              <button class="btn sm" onclick="event.stopPropagation();sessionAction('{{id}}','disconnect')">Disconnect</button>
+              <button class="btn sm" onclick="event.stopPropagation();sessionAction('{{id}}','disconnect')">Desconectar</button>
               {{/if}}
-              <a class="btn sm" href="/s/{{id}}" onclick="event.stopPropagation()">Open</a>
+              <a class="btn sm" href="/s/{{id}}" onclick="event.stopPropagation()">Abrir</a>
             </span>
           </td>
         </tr>
@@ -86,12 +86,12 @@
     </table>
     {{else}}
     <div class="empty">
-      No sessions yet. A session is one WhatsApp number: either a linked
-      WhatsApp Web device, or a number on Meta's Cloud API.
+      Nenhuma sessão cadastrada. Cada sessão representa um número de WhatsApp:
+      um aparelho vinculado pelo WhatsApp Web ou um número da Cloud API da Meta.
       <div style="margin-top:16px">
         <button class="btn primary" onclick="openNewSession()">
           <svg class="icon sm"><use href="#i-plus"/></svg>
-          New session
+          Nova sessão
         </button>
       </div>
     </div>
@@ -100,8 +100,8 @@
 
   <article class="panel">
     <header class="panel-head">
-      <span class="panel-title">Activity</span>
-      <span class="panel-note">{{event_rate}} in the last minute</span>
+      <span class="panel-title">Atividade</span>
+      <span class="panel-note">{{event_rate}} no último minuto</span>
     </header>
     <div class="activity">
       {{#if has_events}}
@@ -115,7 +115,7 @@
         </div>
         {{/each}}
       {{else}}
-      <div class="empty">Nothing yet. Events show up here as sessions connect and messages arrive.</div>
+      <div class="empty">Sem atividade por enquanto. Os eventos aparecem quando as sessões se conectam e recebem mensagens.</div>
       {{/if}}
     </div>
   </article>

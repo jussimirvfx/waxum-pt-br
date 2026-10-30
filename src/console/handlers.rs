@@ -148,12 +148,12 @@ struct OverviewData {
 /// CSS class and label for a session's state.
 ///
 /// A `whatsapp_cloud` session has no socket: once its credentials are
-/// stored it is reachable, so it is always "Ready". For a linked-device
+/// stored it is reachable, so it is always "Pronta". For a linked-device
 /// session the pairing states get their own label: a session showing a
 /// QR used to read "OFFLINE", which sent people looking for a fault.
 fn session_status(state: &AppState, s: &SessionInfo) -> (&'static str, &'static str) {
     if crate::api::shared::sessions::handlers::is_cloud_session(s) {
-        return ("connected", "Ready");
+        return ("connected", "Pronta");
     }
     status_row(runtime_status(state, s))
 }
@@ -167,12 +167,12 @@ fn runtime_status(state: &AppState, s: &SessionInfo) -> SessionStatus {
 
 fn status_row(s: SessionStatus) -> (&'static str, &'static str) {
     match s {
-        SessionStatus::LoggedIn => ("connected", "Connected"),
-        SessionStatus::Connected => ("connecting", "Logging in"),
-        SessionStatus::Connecting => ("connecting", "Connecting"),
-        SessionStatus::WaitingForQr => ("pairing", "Waiting for QR scan"),
-        SessionStatus::WaitingForPairCode => ("pairing", "Waiting for pair code"),
-        SessionStatus::Disconnected => ("idle", "Disconnected"),
+        SessionStatus::LoggedIn => ("connected", "Conectada"),
+        SessionStatus::Connected => ("connecting", "Autenticando"),
+        SessionStatus::Connecting => ("connecting", "Conectando"),
+        SessionStatus::WaitingForQr => ("pairing", "Aguardando leitura do QR Code"),
+        SessionStatus::WaitingForPairCode => ("pairing", "Aguardando código de vínculo"),
+        SessionStatus::Disconnected => ("idle", "Desconectada"),
     }
 }
 
@@ -197,16 +197,16 @@ pub fn summarize_event(event: &str, payload: &str) -> String {
                 .map(str::to_string)
                 .unwrap_or_else(|| format!("[{}]", text("message_type")));
             let direction = if data.get("is_from_me").and_then(|v| v.as_bool()) == Some(true) {
-                "to"
+                "para"
             } else {
-                "from"
+                "de"
             };
             format!("{direction} {who}: {body}")
         }
-        "qr_code" => "new QR ready to scan".to_string(),
-        "pair_code" => "pair code issued".to_string(),
+        "qr_code" => "novo QR Code pronto para leitura".to_string(),
+        "pair_code" => "código de vínculo gerado".to_string(),
         "webhook_suspended" => format!(
-            "{} — retry in {} min ({})",
+            "{} — nova tentativa em {} min ({})",
             text("url"),
             data.get("retry_in_seconds")
                 .and_then(|v| v.as_u64())
@@ -294,7 +294,23 @@ async fn build_overview_data(state: &AppState) -> OverviewData {
             };
             EventRow {
                 time: dt.format("%H:%M:%S").to_string(),
-                kind: e.event_type.clone(),
+                kind: match e.event_type.as_str() {
+                    "message" => "Mensagem",
+                    "connected" => "Conectada",
+                    "disconnected" => "Desconectada",
+                    "logged_in" => "Autenticada",
+                    "logged_out" => "Desvinculada",
+                    "qr_code" => "QR Code",
+                    "pair_code" => "Código de vínculo",
+                    "pairing_code_error" | "pair_error" => "Erro no vínculo",
+                    "connect_failure" => "Falha na conexão",
+                    "account_locked" => "Conta restrita",
+                    "webhook_suspended" => "Webhook suspenso",
+                    "webhook_resumed" => "Webhook retomado",
+                    "receipt" => "Confirmação de mensagem",
+                    other => other,
+                }
+                .to_string(),
                 level: level.to_string(),
                 msg: e.summary.clone(),
                 session: e.session_id.clone(),
@@ -326,7 +342,7 @@ pub async fn overview(headers: HeaderMap, State(state): State<AppState>) -> Resp
         return *r;
     }
     let data = build_overview_data(&state).await;
-    html(render_page("Overview", "overview", &data))
+    html(render_page("Visão geral", "overview", &data))
 }
 
 pub async fn overview_fragment(headers: HeaderMap, State(state): State<AppState>) -> Response {
@@ -357,7 +373,7 @@ pub async fn login_page(headers: HeaderMap) -> Response {
     {
         return redirect_to("/");
     }
-    html(render_page("Sign in", "login", &LoginData { error: None }))
+    html(render_page("Entrar", "login", &LoginData { error: None }))
 }
 
 #[derive(Deserialize)]
@@ -369,10 +385,10 @@ pub async fn login_submit(headers: HeaderMap, Form(form): Form<LoginForm>) -> Re
     if !token_is_superadmin(form.token.trim()) {
         tracing::warn!("console: rejected login attempt with an invalid token");
         return html(render_page(
-            "Sign in",
+            "Entrar",
             "login",
             &LoginData {
-                error: Some("Token rejected. Check SUPERADMIN_TOKEN on the server."),
+                error: Some("Token inválido. Confira o SUPERADMIN_TOKEN no servidor."),
             },
         ));
     }
@@ -468,7 +484,7 @@ pub async fn session_page(
         storage_path,
         cloud,
     };
-    html(render_page(&format!("Session · {}", sid), "session", &data))
+    html(render_page(&format!("Sessão · {}", sid), "session", &data))
 }
 
 fn render_qr(code: &str) -> Result<String, String> {
@@ -701,7 +717,7 @@ mod tests {
     fn a_qr_event_is_summarised_without_the_pairing_code() {
         let payload = r#"{"session_id":"s","event":"qr_code","data":{"code":"2@SECRETSECRET,abc==","timeout_seconds":59}}"#;
         let line = summarize_event("qr_code", payload);
-        assert_eq!(line, "new QR ready to scan");
+        assert_eq!(line, "novo QR Code pronto para leitura");
         assert!(!line.contains("SECRET"));
     }
 
@@ -709,13 +725,13 @@ mod tests {
     fn messages_read_as_who_and_what() {
         let inbound =
             r#"{"event":"message","data":{"push_name":"Budi","text":"halo","is_from_me":false}}"#;
-        assert_eq!(summarize_event("message", inbound), "from Budi: halo");
+        assert_eq!(summarize_event("message", inbound), "de Budi: halo");
         let media = r#"{"event":"message","data":{"from_phone":"628111","message_type":"image","is_from_me":false}}"#;
-        assert_eq!(summarize_event("message", media), "from 628111: [image]");
+        assert_eq!(summarize_event("message", media), "de 628111: [image]");
         let outbound = r#"{"event":"message","data":{"chat":"628222@s.whatsapp.net","caption":"cek","is_from_me":true}}"#;
         assert_eq!(
             summarize_event("message", outbound),
-            "to 628222@s.whatsapp.net: cek"
+            "para 628222@s.whatsapp.net: cek"
         );
     }
 
