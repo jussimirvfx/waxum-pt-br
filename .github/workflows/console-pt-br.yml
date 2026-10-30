@@ -28,6 +28,6 @@ jobs:
         run: node scripts/check-console-contract.cjs
       - name: Mensagens e estados do painel
         run: |
-          cargo test --locked --lib console::
+          cargo test --locked --lib
       - name: Sessoes Web e Cloud no painel
         run: cargo test --locked --test console_cloud
