@@ -1093,6 +1093,13 @@ pub(super) fn event_to_json(
         Event::Receipt(receipt) => {
             serde_json::json!({
                 "receipt": format!("{:?}", receipt),
+                "message_ids": receipt.message_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>(),
+                "type": receipt.r#type.as_wire_str(),
+                "chat": receipt.source.chat.to_string(),
+                "from": receipt.source.sender.to_string(),
+                "is_from_me": receipt.source.is_from_me,
+                "timestamp": receipt.timestamp.timestamp(),
+                "offline": receipt.offline,
             })
         }
         Event::Presence(presence) => {
@@ -1275,6 +1282,33 @@ pub(super) fn event_to_json(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn receipts_have_structured_ids_and_delivery_state() {
+        use wacore::types::events::{Event, Receipt};
+        use wacore::types::message::MessageSource;
+        use wacore::types::presence::ReceiptType;
+
+        let receipt = Receipt::builder()
+            .source(MessageSource {
+                chat: "5511999999999@s.whatsapp.net".parse().unwrap(),
+                sender: "5511999999999@s.whatsapp.net".parse().unwrap(),
+                ..Default::default()
+            })
+            .message_ids(vec!["message-one".into(), "message-two".into()])
+            .timestamp(chrono::Utc::now())
+            .r#type(ReceiptType::Read)
+            .offline(false)
+            .build();
+        let payload = event_to_json(&Event::Receipt(receipt), "crm-example");
+        assert_eq!(payload["session_id"], "crm-example");
+        assert_eq!(payload["event"], "receipt");
+        assert_eq!(payload["data"]["type"], "read");
+        assert_eq!(payload["data"]["message_ids"], serde_json::json!(["message-one", "message-two"]));
+        assert_eq!(payload["data"]["chat"], "5511999999999@s.whatsapp.net");
+        assert_eq!(payload["data"]["is_from_me"], false);
+        assert!(payload["data"]["receipt"].is_string());
+    }
 
     mod media_pointer {
         use super::super::*;
