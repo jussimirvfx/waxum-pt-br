@@ -27,6 +27,7 @@ jobs:
       - name: Contrato das operacoes da interface
         run: node scripts/check-console-contract.cjs
       - name: Mensagens e estados do painel
-        run: cargo test --locked --lib console::
+        run: |
+          cargo test --locked --lib console::
       - name: Sessoes Web e Cloud no painel
         run: cargo test --locked --test console_cloud
