@@ -617,6 +617,9 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible {
   .overview-grid, .cards { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
+  .topbar-inner { flex-wrap: wrap; gap: var(--spacing-3); }
+  .topbar-inner > .spacer { display: none; }
+  .version { margin-left: auto; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .explorer { grid-template-columns: minmax(0, 1fr); height: auto; }
   .ex-nav { border-right: 0; border-bottom: var(--border-width) solid var(--color-border-emphasized); max-height: 320px; }
