@@ -1,0 +1,32 @@
+name: Console pt-BR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
+
+jobs:
+  console:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Dependencias nativas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config libsqlite3-dev cmake build-essential
+      - name: Contrato das operacoes da interface
+        run: node scripts/check-console-contract.cjs
+      - name: Mensagens e estados do painel
+        run: cargo test --locked --lib console::
+      - name: Sessoes Web e Cloud no painel
+        run: cargo test --locked --test console_cloud
