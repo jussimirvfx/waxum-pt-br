@@ -9,11 +9,21 @@ name: Upstream whatsapp-rust
 # workflows, so the checks run here and their outcome is written into the pull
 # request body. Set the UPSTREAM_BUMP_TOKEN secret to a personal access token
 # to have CI run on the pull request as well.
+#
+# Forks review dependency changes per release (docs/DEPENDENCIES.md). Their
+# scheduled bumps are opt-in via ENABLE_UPSTREAM_BUMPS=true. Manual runs only
+# produce a report unless create_pr is explicitly selected; neither mode
+# merges changes or deploys the application.
 
 on:
   schedule:
     - cron: "17 */6 * * *"
   workflow_dispatch:
+    inputs:
+      create_pr:
+        description: "Publish a dependency bump PR (requires Actions PR permission or UPSTREAM_BUMP_TOKEN)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -30,9 +40,14 @@ concurrency:
 
 jobs:
   bump:
+    if: github.event_name == 'workflow_dispatch' || github.repository == 'imtaqin/waxum' || vars.ENABLE_UPSTREAM_BUMPS == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       GH_TOKEN: ${{ secrets.UPSTREAM_BUMP_TOKEN || secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      CREATE_PR: ${{ github.event_name == 'schedule' || inputs.create_pr }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,7 +76,10 @@ jobs:
         if: steps.revs.outputs.needed == 'true'
         run: |
           branch="chore/upstream-whatsapp-rust-${{ steps.revs.outputs.short }}"
-          open=$(gh pr list --head "$branch" --state open --json number --jq 'length')
+          open=0
+          if [ "$CREATE_PR" = "true" ]; then
+            open=$(gh pr list --base "$BASE_BRANCH" --head "$branch" --state open --json number --jq 'length')
+          fi
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           if [ "$open" != "0" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -71,7 +89,9 @@ jobs:
 
       - name: Install Rust nightly
         if: steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false'
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2026-04-05
 
       - name: Install rustfmt and clippy
         if: steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false'
@@ -96,6 +116,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-upstream-
 
       - name: Move the pin to the latest rev
+        id: update
         if: steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false'
         run: |
           current='${{ steps.revs.outputs.current }}'
@@ -103,13 +124,15 @@ jobs:
           sed -i "s/${current}/${latest}/g" Cargo.toml vendor/whatsapp-rust-chat-store/Cargo.toml
           if ! cargo update -p whatsapp-rust > update.log 2>&1; then
             echo "targeted update refused, refreshing the whole lockfile" >> update.log
-            cargo update >> update.log 2>&1
+            if ! cargo update >> update.log 2>&1; then
+              echo "failed=true" >> "$GITHUB_OUTPUT"
+            fi
           fi
           cat update.log
 
       - name: Build and test against the new rev
         id: verify
-        if: steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false'
+        if: steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false' && steps.update.outputs.failed != 'true'
         run: |
           set +e
           cargo check --all-targets > check.log 2>&1
@@ -140,32 +163,39 @@ jobs:
           latest='${{ steps.revs.outputs.latest }}'
           {
             echo "Moves the pinned whatsapp-rust from \`${current:0:7}\` to \`${latest:0:7}\` (current upstream main)."
+            echo "Target repository: ${GH_REPO}, base branch: ${BASE_BRANCH}."
+            echo "This report does not merge changes or deploy the application."
             echo
             echo "| Step | Result |"
             echo "|------|--------|"
             row() { if [ "$2" = "0" ]; then echo "| $1 | passed |"; else echo "| $1 | **failed** |"; fi; }
-            row "cargo check (all targets)" "${{ steps.verify.outputs.check }}"
-            if [ "${{ steps.verify.outputs.check }}" = "0" ]; then
-              row "cargo fmt --check" "${{ steps.verify.outputs.fmt }}"
-              row "cargo clippy -D warnings" "${{ steps.verify.outputs.clippy }}"
-              row "cargo test" "${{ steps.verify.outputs.tests }}"
+            if [ "${{ steps.update.outputs.failed }}" = "true" ]; then
+              echo "| cargo update | **failed** (see update.log) |"
+              echo "| check, fmt, clippy, test | not run, dependency resolution failed |"
             else
-              echo "| fmt, clippy, test | not run, the build does not compile |"
+              row "cargo check (all targets)" "${{ steps.verify.outputs.check }}"
+              if [ "${{ steps.verify.outputs.check }}" = "0" ]; then
+                row "cargo fmt --check" "${{ steps.verify.outputs.fmt }}"
+                row "cargo clippy -D warnings" "${{ steps.verify.outputs.clippy }}"
+                row "cargo test" "${{ steps.verify.outputs.tests }}"
+              else
+                echo "| fmt, clippy, test | not run, the build does not compile |"
+              fi
             fi
             echo
-            if [ "${{ steps.verify.outputs.check }}" != "0" ]; then
+            if [ "${{ steps.update.outputs.failed }}" != "true" ] && [ "${{ steps.verify.outputs.check }}" != "0" ]; then
               echo "### Compile errors"
               echo
               echo "Files in waxum that no longer compile, by area:"
               echo
               echo '```'
-              grep -oE 'src/[a-z_/]+\.rs' check.log | sed -E 's|/[^/]+\.rs$||' | sort | uniq -c | sort -rn | head -15
+              { grep -oE '(vendor/)?[a-zA-Z0-9_/-]*src/[a-zA-Z0-9_/.-]+\.rs' check.log || true; } | sed -E 's|/[^/]+\.rs$||' | sort | uniq -c | sort -rn | sed -n '1,15p'
               echo '```'
               echo
               echo "First errors:"
               echo
               echo '```'
-              grep -E '^error' -A6 check.log | head -60
+              { grep -E '^error' -A6 check.log || true; } | sed -n '1,60p'
               echo '```'
             fi
             if [ "${{ steps.verify.outputs.tests }}" != "0" ] && [ "${{ steps.verify.outputs.check }}" = "0" ]; then
@@ -174,14 +204,14 @@ jobs:
               echo "Each test file is one feature."
               echo
               echo '```'
-              awk '/Running /{bin=$2} /^test .* FAILED$/{print bin ": " $2}' test.log | sed -E 's|^tests/||' | sort | head -60
+              awk '/Running /{bin=$2} /^test .* FAILED$/{print bin ": " $2}' test.log | sed -E 's|^tests/||' | sort | sed -n '1,60p'
               echo '```'
             fi
             if [ "${{ steps.verify.outputs.clippy }}" != "0" ] && [ "${{ steps.verify.outputs.check }}" = "0" ]; then
               echo "### Clippy"
               echo
               echo '```'
-              grep -E '^(error|warning)' -A4 clippy.log | head -40
+              { grep -E '^(error|warning)' -A4 clippy.log || true; } | sed -n '1,40p'
               echo '```'
             fi
             echo "### Upstream commits"
@@ -196,9 +226,23 @@ jobs:
             echo '```'
           } > report.md
           cat report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload compatibility report and logs
+        if: always() && steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: upstream-whatsapp-rust-report
+          path: |
+            report.md
+            update.log
+            check.log
+            fmt.log
+            clippy.log
+            test.log
 
       - name: Open the pull request
-        if: steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false'
+        if: env.CREATE_PR == 'true' && steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false' && steps.update.outputs.failed != 'true'
         run: |
           branch='${{ steps.existing.outputs.branch }}'
           short='${{ steps.revs.outputs.short }}'
@@ -211,20 +255,20 @@ jobs:
           gh label create upstream-break --color B60205 --description "whatsapp-rust upstream breaks waxum" 2>/dev/null || true
           gh label create upstream-bump --color 0E8A16 --description "Automatic whatsapp-rust bump" 2>/dev/null || true
           if [ "${{ steps.verify.outputs.green }}" = "true" ]; then
-            gh pr create --base main --head "$branch" \
+            gh pr create --base "$BASE_BRANCH" --head "$branch" \
               --title "chore(deps): bump whatsapp-rust to ${short}" \
               --body-file report.md --label upstream-bump
           else
-            gh pr create --base main --head "$branch" --draft \
+            gh pr create --base "$BASE_BRANCH" --head "$branch" --draft \
               --title "chore(deps): bump whatsapp-rust to ${short} (breaks waxum)" \
               --body-file report.md --label upstream-bump --label upstream-break
           fi
 
       - name: Close superseded bump pull requests
-        if: steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false'
+        if: env.CREATE_PR == 'true' && steps.revs.outputs.needed == 'true' && steps.existing.outputs.skip == 'false' && steps.update.outputs.failed != 'true'
         run: |
           current_branch='${{ steps.existing.outputs.branch }}'
-          gh pr list --state open --label upstream-bump --json number,headRefName \
+          gh pr list --base "$BASE_BRANCH" --state open --label upstream-bump --json number,headRefName \
             --jq '.[] | select(.headRefName != "'"$current_branch"'") | .number' |
           while read -r number; do
             gh pr close "$number" --delete-branch \
