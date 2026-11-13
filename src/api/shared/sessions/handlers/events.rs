@@ -31,9 +31,16 @@ pub(super) async fn handle_event(
         None => return,
     };
 
-    if !is_current_client(runtime.get_client(), &client)
-        && !matches!(event.as_ref(), Event::Messages(_))
-    {
+    let current_client = is_current_client(runtime.get_client(), &client);
+    if let Some(reason) = terminal_event_diagnostic(event.as_ref()) {
+        // A terminal event may finish dispatching after run() has returned.
+        // Keep its safe classification in logs, without changing a replacement.
+        tracing::warn!(session_id, current_client, reason = %reason, "connection protocol event");
+        if current_client {
+            runtime.update_pair_state(|ps| ps.last_error = Some(reason));
+        }
+    }
+    if !current_client && !matches!(event.as_ref(), Event::Messages(_)) {
         tracing::debug!(
             session_id = %session_id,
             event = %get_event_type(event.as_ref()),
@@ -102,6 +109,8 @@ pub(super) async fn handle_event(
                 .await;
         }
         Event::Disconnected(d) => {
+            runtime.set_qr_codes(vec![]);
+            runtime.set_pair_code(None);
             let reason = format!("{}", d.reason);
             let clean = d.reason.is_clean_shutdown();
             if clean {
@@ -297,6 +306,21 @@ pub(super) async fn handle_event(
             .await;
         runtime.broadcast_event(payload);
     }
+}
+
+fn terminal_event_diagnostic(event: &wacore::types::events::Event) -> Option<String> {
+    use wacore::types::events::Event;
+    use whatsapp_rust::ProtocolTerminalReason;
+    let protocol = match event {
+        Event::ConnectFailure(failure) => ProtocolTerminalReason::ConnectFailure(failure.reason),
+        Event::LoggedOut(logout) => ProtocolTerminalReason::ConnectFailure(logout.reason),
+        Event::StreamError(error) => match error.code.parse::<u16>() {
+            Ok(code) => ProtocolTerminalReason::StreamErrorCode(code),
+            Err(_) => return Some("stream_error:unclassified".into()),
+        },
+        _ => return None,
+    };
+    Some(super::connection::protocol_error_label(&protocol))
 }
 
 /// `wacore::types::events::Event` is `#[non_exhaustive]`, so the wildcard
@@ -1284,6 +1308,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn terminal_event_diagnostics_never_copy_raw_server_content() {
+        use wacore::types::events::{ConnectFailure, ConnectFailureReason, Event, StreamError};
+        let failure = Event::ConnectFailure(
+            ConnectFailure::builder()
+                .reason(ConnectFailureReason::AccountLocked)
+                .message("secret-server-value".to_string())
+                .build(),
+        );
+        assert_eq!(
+            terminal_event_diagnostic(&failure).as_deref(),
+            Some("connect_failure:AccountLocked")
+        );
+        let invalid = Event::StreamError(
+            StreamError::builder()
+                .code("secret-code-value".into())
+                .build(),
+        );
+        assert_eq!(
+            terminal_event_diagnostic(&invalid).as_deref(),
+            Some("stream_error:unclassified")
+        );
+        let valid = Event::StreamError(StreamError::builder().code("429".into()).build());
+        assert_eq!(
+            terminal_event_diagnostic(&valid).as_deref(),
+            Some("stream_error:429")
+        );
+    }
+
+    #[test]
     fn receipts_have_structured_ids_and_delivery_state() {
         use wacore::types::events::{Event, Receipt};
         use wacore::types::message::MessageSource;
@@ -1304,7 +1357,10 @@ mod tests {
         assert_eq!(payload["session_id"], "crm-example");
         assert_eq!(payload["event"], "receipt");
         assert_eq!(payload["data"]["type"], "read");
-        assert_eq!(payload["data"]["message_ids"], serde_json::json!(["message-one", "message-two"]));
+        assert_eq!(
+            payload["data"]["message_ids"],
+            serde_json::json!(["message-one", "message-two"])
+        );
         assert_eq!(payload["data"]["chat"], "5511999999999@s.whatsapp.net");
         assert_eq!(payload["data"]["is_from_me"], false);
         assert!(payload["data"]["receipt"].is_string());

@@ -341,10 +341,16 @@
       setText('lv-forwarded', String(d.messages_forwarded == null ? '—' : d.messages_forwarded));
     } else if (s.status === 'disconnected') {
       $('pair-qr').innerHTML = '<div class="hint">Desconectada. Clique em <b>Conectar</b> para obter um QR Code.</div>';
+      if (s.pair && s.pair.last_error) {
+        const failure = document.createElement('div');
+        failure.className = 'hint';
+        failure.textContent = 'A conexão foi encerrada. Motivo: ' + s.pair.last_error;
+        $('pair-qr').replaceChildren(failure);
+      }
     } else if (pairing) {
       await refreshQr();
-    } else if (busy && !$('pair-qr').querySelector('svg')) {
-      $('pair-qr').innerHTML = '<div class="hint">Aguardando QR Code do WhatsApp…</div>';
+    } else if (busy) {
+      $('pair-qr').innerHTML = '<div class="hint">Conectando ao WhatsApp…</div>';
     }
 
     const nc = d.new_chats || {};
