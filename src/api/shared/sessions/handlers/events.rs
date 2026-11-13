@@ -40,9 +40,7 @@ pub(super) async fn handle_event(
             runtime.update_pair_state(|ps| ps.last_error = Some(reason));
         }
     }
-    if !current_client
-        && !matches!(event.as_ref(), Event::Messages(_))
-    {
+    if !current_client && !matches!(event.as_ref(), Event::Messages(_)) {
         tracing::debug!(
             session_id = %session_id,
             event = %get_event_type(event.as_ref()),
@@ -1318,11 +1316,24 @@ mod tests {
                 .message("secret-server-value".to_string())
                 .build(),
         );
-        assert_eq!(terminal_event_diagnostic(&failure).as_deref(), Some("connect_failure:AccountLocked"));
-        let invalid = Event::StreamError(StreamError::builder().code("secret-code-value".into()).build());
-        assert_eq!(terminal_event_diagnostic(&invalid).as_deref(), Some("stream_error:unclassified"));
+        assert_eq!(
+            terminal_event_diagnostic(&failure).as_deref(),
+            Some("connect_failure:AccountLocked")
+        );
+        let invalid = Event::StreamError(
+            StreamError::builder()
+                .code("secret-code-value".into())
+                .build(),
+        );
+        assert_eq!(
+            terminal_event_diagnostic(&invalid).as_deref(),
+            Some("stream_error:unclassified")
+        );
         let valid = Event::StreamError(StreamError::builder().code("429".into()).build());
-        assert_eq!(terminal_event_diagnostic(&valid).as_deref(), Some("stream_error:429"));
+        assert_eq!(
+            terminal_event_diagnostic(&valid).as_deref(),
+            Some("stream_error:429")
+        );
     }
 
     #[test]
@@ -1346,7 +1357,10 @@ mod tests {
         assert_eq!(payload["session_id"], "crm-example");
         assert_eq!(payload["event"], "receipt");
         assert_eq!(payload["data"]["type"], "read");
-        assert_eq!(payload["data"]["message_ids"], serde_json::json!(["message-one", "message-two"]));
+        assert_eq!(
+            payload["data"]["message_ids"],
+            serde_json::json!(["message-one", "message-two"])
+        );
         assert_eq!(payload["data"]["chat"], "5511999999999@s.whatsapp.net");
         assert_eq!(payload["data"]["is_from_me"], false);
         assert!(payload["data"]["receipt"].is_string());
