@@ -287,3 +287,39 @@ async fn attaching_cloud_credentials_tears_down_the_multi_device_runtime() {
     .await;
     assert_eq!(body["status"], "logged_in");
 }
+
+#[tokio::test]
+async fn connecting_session_has_no_qr_until_a_real_code_is_available() {
+    use waxum::api::shared::sessions::models::SessionStatus;
+    let h = Harness::new().await;
+    h.state.session_manager().create_session("qr-progress", None, "unused-fixture-path").await.unwrap();
+    let runtime = h.state.get_or_create_session("qr-progress", "unused-fixture-path");
+    runtime.set_status(SessionStatus::Connecting);
+    let (status, body) = call(&h.app, req_get("/api/v1/sessions/qr-progress/qr", Some(TEST_TOKEN))).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "connecting");
+    assert_eq!(body["qr_codes"], json!([]));
+    runtime.set_qr_codes(vec!["fixture-real-qr".into()]);
+    runtime.set_status(SessionStatus::WaitingForQr);
+    let (_, body) = call(&h.app, req_get("/api/v1/sessions/qr-progress/qr", Some(TEST_TOKEN))).await;
+    assert_eq!(body["status"], "waiting_for_qr");
+    assert_eq!(body["qr_codes"], json!(["fixture-real-qr"]));
+}
+
+#[tokio::test]
+async fn completion_diagnostic_is_scoped_to_its_session() {
+    let h = Harness::new().await;
+    for id in ["failed-fixture", "untouched-fixture"] {
+        h.state.session_manager().create_session(id, None, "unused-fixture-path").await.unwrap();
+    }
+    let runtime = h.state.get_or_create_session("failed-fixture", "unused-fixture-path");
+    runtime.update_pair_state(|ps| ps.last_error = Some("auto_reconnect_disabled; stream_error:429".into()));
+    let (status, body) = call(&h.app, req_get("/api/v1/sessions/failed-fixture/status", Some(TEST_TOKEN))).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["pair"]["last_error"], "auto_reconnect_disabled; stream_error:429");
+    let (_, other) = call(&h.app, req_get("/api/v1/sessions/untouched-fixture/status", Some(TEST_TOKEN))).await;
+    assert!(other["pair"]["last_error"].is_null());
+    let (status, _) = call(&h.app, req_get("/api/v1/sessions/failed-fixture/status", None)).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+

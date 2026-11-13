@@ -727,11 +727,16 @@ pub(super) async fn mark_disconnected_if_still_current(
     state: &AppState,
     session_id: &str,
     own_client: &std::sync::Arc<whatsapp_rust::Client>,
+    completion: &whatsapp_rust::RunCompletionReason,
 ) {
+    let error = run_completion_error(completion);
+    if let Some(error) = &error {
+        tracing::warn!(session_id, reason = %error, "connection supervisor ended");
+    } else {
+        tracing::info!(session_id, reason = "shutdown_requested", "connection supervisor ended");
+    }
     if let Some(runtime) = state.get_session(session_id) {
-        let still_current = runtime
-            .get_client()
-            .is_none_or(|installed| is_current_client(Some(installed), own_client));
+        let still_current = is_current_client(runtime.get_client(), own_client);
         if !still_current {
             tracing::debug!(
                 session_id = %session_id,
@@ -740,12 +745,74 @@ pub(super) async fn mark_disconnected_if_still_current(
             return;
         }
         runtime.set_status(SessionStatus::Disconnected);
+        runtime.set_qr_codes(vec![]);
+        runtime.set_pair_code(None);
+        if let Some(error) = error {
+            runtime.update_pair_state(|ps| ps.last_error = Some(error));
+        }
         runtime.set_client(None);
     }
     let _ = state
         .session_manager()
         .update_session_status(session_id, SessionStatus::Disconnected, false)
         .await;
+}
+
+/// Only retain classified causes. Raw transport errors and server-close text
+/// can contain URLs or credentials and must not reach logs or the console.
+fn run_completion_error(completion: &whatsapp_rust::RunCompletionReason) -> Option<String> {
+    use whatsapp_rust::{ConflictKind, ConnectError, ProtocolTerminalReason, RunCompletionReason};
+    let (connection, connect_error, protocol_error) = match completion {
+        RunCompletionReason::ShutdownRequested => return None,
+        RunCompletionReason::AlreadyRunning => return Some("already_running".into()),
+        RunCompletionReason::Stopped => return Some("stopped_without_reported_cause".into()),
+        RunCompletionReason::AutoReconnectDisabled {
+            connection,
+            connect_error,
+            protocol_error,
+        } => (connection, connect_error, protocol_error),
+        _ => return Some("unclassified_completion".into()),
+    };
+    let mut details = vec!["auto_reconnect_disabled".to_string()];
+    if let Some(protocol) = protocol_error {
+        details.push(match protocol {
+            ProtocolTerminalReason::StreamErrorCode(code) => format!("stream_error:{code}"),
+            ProtocolTerminalReason::ConnectFailure(reason) => format!("connect_failure:{reason:?}"),
+            ProtocolTerminalReason::Conflict(ConflictKind::Replaced) => "conflict:replaced".into(),
+            ProtocolTerminalReason::Conflict(ConflictKind::DeviceRemoved) => {
+                "conflict:device_removed".into()
+            }
+            ProtocolTerminalReason::Conflict(_) => "conflict:unknown".into(),
+            _ => "protocol:unclassified".into(),
+        });
+    }
+    if let Some(error) = connect_error {
+        let kind = match error {
+            ConnectError::AlreadyConnected => "already_connected",
+            ConnectError::NotActivated => "not_activated",
+            ConnectError::Shutdown => "shutdown",
+            ConnectError::Paused => "paused",
+            ConnectError::Timeout { .. } => "timeout",
+            ConnectError::Version(_) => "version_resolution",
+            ConnectError::Transport(_) => "transport",
+            ConnectError::Handshake(error) if error.is_timeout() => "handshake_timeout",
+            ConnectError::Handshake(_) => "handshake",
+            _ => "unclassified",
+        };
+        details.push(format!("connect:{kind}"));
+    }
+    if let Some(reason) = connection {
+        use wacore::net::DisconnectReason;
+        details.push(match reason {
+            DisconnectReason::ServerClose { code: Some(code), .. } => format!("server_close:{code}"),
+            DisconnectReason::ServerClose { .. } => "server_close:no_code".into(),
+            DisconnectReason::StreamEnded => "stream_ended".into(),
+            DisconnectReason::ReadError(_) => "read_error".into(),
+            DisconnectReason::Unknown => "disconnect:unknown".into(),
+            _ => "disconnect:unclassified".into(),
+        });
+    }
+    Some(details.join("; "))
 }
 
 pub(super) async fn connect_client(
@@ -828,17 +895,20 @@ pub(super) async fn connect_client(
         }
         runtime.set_enc_decrypt_failed_lease(c.acquire_enc_decrypt_failed_forwarding());
         runtime.set_client(Some(c));
-        runtime.set_status(SessionStatus::WaitingForQr);
+        runtime.clear_pair_state();
+        runtime.set_qr_codes(vec![]);
+        runtime.set_pair_code(None);
+        runtime.set_status(SessionStatus::Connecting);
     }
 
     let _ = state
         .session_manager()
-        .update_session_status(session_id, SessionStatus::WaitingForQr, false)
+        .update_session_status(session_id, SessionStatus::Connecting, false)
         .await;
 
     let own_client = bot.client();
-    bot.run().await;
-    mark_disconnected_if_still_current(state, session_id, &own_client).await;
+    let completion = bot.run().await;
+    mark_disconnected_if_still_current(state, session_id, &own_client, &completion).await;
 
     Ok(())
 }
@@ -947,8 +1017,8 @@ pub(super) async fn connect_client_with_pair_code(
     }
 
     let own_client = bot.client();
-    bot.run().await;
-    mark_disconnected_if_still_current(state, session_id, &own_client).await;
+    let completion = bot.run().await;
+    mark_disconnected_if_still_current(state, session_id, &own_client, &completion).await;
 
     Ok(())
 }
@@ -995,8 +1065,11 @@ pub(super) fn is_current_client<T>(
 
 #[cfg(test)]
 mod client_guard_tests {
-    use super::is_current_client;
+    use super::{is_current_client, mark_disconnected_if_still_current, run_completion_error};
+    use crate::api::shared::sessions::models::SessionStatus;
+    use crate::state::AppState;
     use std::sync::Arc;
+    use whatsapp_rust::{ConflictKind, ConnectError, ProtocolTerminalReason, RunCompletionReason};
 
     #[test]
     fn only_the_installed_client_is_current() {
@@ -1011,5 +1084,168 @@ mod client_guard_tests {
             !is_current_client(None, &current),
             "nothing is current after a disconnect"
         );
+    }
+
+    #[test]
+    fn requested_shutdown_is_not_a_connection_failure() {
+        assert_eq!(run_completion_error(&RunCompletionReason::ShutdownRequested), None);
+    }
+
+    #[test]
+    fn an_unclassified_stop_does_not_invent_a_logout_or_ban() {
+        assert_eq!(
+            run_completion_error(&RunCompletionReason::Stopped).as_deref(),
+            Some("stopped_without_reported_cause")
+        );
+    }
+
+    #[test]
+    fn terminal_protocol_code_is_retained() {
+        let reason = RunCompletionReason::AutoReconnectDisabled {
+            connection: None,
+            connect_error: None,
+            protocol_error: Some(ProtocolTerminalReason::StreamErrorCode(429)),
+        };
+        assert_eq!(
+            run_completion_error(&reason).as_deref(),
+            Some("auto_reconnect_disabled; stream_error:429")
+        );
+    }
+
+    #[test]
+    fn replaced_and_removed_devices_are_distinct() {
+        for (kind, label) in [
+            (ConflictKind::Replaced, "conflict:replaced"),
+            (ConflictKind::DeviceRemoved, "conflict:device_removed"),
+            (ConflictKind::Unknown, "conflict:unknown"),
+        ] {
+            let reason = RunCompletionReason::AutoReconnectDisabled {
+                connection: None,
+                connect_error: None,
+                protocol_error: Some(ProtocolTerminalReason::Conflict(kind)),
+            };
+            assert_eq!(run_completion_error(&reason).unwrap(), format!("auto_reconnect_disabled; {label}"));
+        }
+    }
+
+    #[test]
+    fn raw_transport_and_server_text_are_never_exposed() {
+        let reason = RunCompletionReason::AutoReconnectDisabled {
+            connection: Some(wacore::net::DisconnectReason::ServerClose {
+                code: Some(1006),
+                reason: "secret-server-value".into(),
+            }),
+            connect_error: Some(ConnectError::Transport(anyhow::anyhow!("secret-transport-value"))),
+            protocol_error: None,
+        };
+        let diagnostic = run_completion_error(&reason).unwrap();
+        assert_eq!(diagnostic, "auto_reconnect_disabled; connect:transport; server_close:1006");
+        assert!(!diagnostic.contains("secret"));
+    }
+
+    #[test]
+    fn read_failure_text_is_never_exposed() {
+        let reason = RunCompletionReason::AutoReconnectDisabled {
+            connection: Some(wacore::net::DisconnectReason::ReadError("secret-read-value".into())),
+            connect_error: None,
+            protocol_error: None,
+        };
+        assert_eq!(run_completion_error(&reason).as_deref(), Some("auto_reconnect_disabled; read_error"));
+    }
+
+    #[test]
+    fn server_logout_reason_is_retained_without_raw_payload() {
+        let reason = RunCompletionReason::AutoReconnectDisabled {
+            connection: None,
+            connect_error: None,
+            protocol_error: Some(ProtocolTerminalReason::ConnectFailure(
+                wacore::types::events::ConnectFailureReason::LoggedOut,
+            )),
+        };
+        assert_eq!(run_completion_error(&reason).as_deref(), Some("auto_reconnect_disabled; connect_failure:LoggedOut"));
+    }
+
+    #[derive(Debug, Clone)]
+    struct NoNetworkHttp;
+
+    #[async_trait::async_trait]
+    impl whatsapp_rust::http::HttpClient for NoNetworkHttp {
+        async fn execute(
+            &self,
+            _: whatsapp_rust::http::HttpRequest,
+        ) -> anyhow::Result<whatsapp_rust::http::HttpResponse> {
+            anyhow::bail!("network access is forbidden in connection diagnostics tests")
+        }
+    }
+
+    async fn diagnostic_fixture() -> (tempfile::TempDir, AppState) {
+        let tmp = tempfile::tempdir().unwrap();
+        let sqlite = crate::db::sqlite_raw::open(tmp.path().join("metadata.db").to_str().unwrap()).unwrap();
+        let pool = crate::db::session::DbPool::SQLite(sqlite);
+        crate::db::schema::init_schema(&pool).await.unwrap();
+        let state = AppState::with_storage_path(
+            pool,
+            None,
+            crate::storage::RecordingStore::local(tmp.path().to_str().unwrap()),
+            tmp.path().join("sessions").to_str().unwrap().into(),
+        ).await;
+        state.session_manager().create_session("diagnostic", None, tmp.path().to_str().unwrap()).await.unwrap();
+        (tmp, state)
+    }
+
+    async fn offline_client(path: &std::path::Path) -> Arc<whatsapp_rust::Client> {
+        let backend = whatsapp_rust_sqlite_storage::SqliteStore::open(path.to_str().unwrap()).await.unwrap();
+        let bot = whatsapp_rust::bot::Bot::builder()
+            .with_backend(backend)
+            .with_transport_factory(whatsapp_rust_tokio_transport::TokioWebSocketTransportFactory::new())
+            .with_http_client(NoNetworkHttp)
+            .with_runtime(whatsapp_rust::TokioRuntime)
+            .build().await.unwrap();
+        bot.client()
+    }
+
+    #[tokio::test]
+    async fn completed_client_exposes_cause_and_withdraws_stale_qr() {
+        let (tmp, state) = diagnostic_fixture().await;
+        let client = offline_client(&tmp.path().join("client.db")).await;
+        let runtime = state.get_or_create_session("diagnostic", tmp.path().to_str().unwrap());
+        runtime.set_client(Some(client.clone()));
+        runtime.set_status(SessionStatus::WaitingForQr);
+        runtime.set_qr_codes(vec!["expired-test-qr".into()]);
+        runtime.set_pair_code(Some("expired-test-code".into()));
+        let other = state.get_or_create_session("other-session", tmp.path().to_str().unwrap());
+        other.set_status(SessionStatus::LoggedIn);
+        mark_disconnected_if_still_current(&state, "diagnostic", &client, &RunCompletionReason::Stopped).await;
+        assert_eq!(runtime.get_status(), SessionStatus::Disconnected);
+        assert_eq!(runtime.get_pair_state().last_error.as_deref(), Some("stopped_without_reported_cause"));
+        assert!(runtime.get_qr_codes().is_empty());
+        assert!(runtime.get_pair_code().is_none());
+        assert_eq!(other.get_status(), SessionStatus::LoggedIn);
+        assert!(state.session_manager().get_session("diagnostic").await.unwrap().is_some());
+    }
+
+    #[tokio::test]
+    async fn replaced_clients_cannot_overwrite_current_connection() {
+        let (tmp, state) = diagnostic_fixture().await;
+        let old = offline_client(&tmp.path().join("old.db")).await;
+        let current = offline_client(&tmp.path().join("current.db")).await;
+        let runtime = state.get_or_create_session("diagnostic", tmp.path().to_str().unwrap());
+        runtime.set_client(Some(current.clone()));
+        runtime.set_status(SessionStatus::Connecting);
+        mark_disconnected_if_still_current(&state, "diagnostic", &old, &RunCompletionReason::Stopped).await;
+        assert_eq!(runtime.get_status(), SessionStatus::Connecting);
+        assert!(is_current_client(runtime.get_client(), &current));
+        assert!(runtime.get_pair_state().last_error.is_none());
+    }
+
+    #[tokio::test]
+    async fn an_old_completion_cannot_cancel_a_new_client_still_being_built() {
+        let (tmp, state) = diagnostic_fixture().await;
+        let old = offline_client(&tmp.path().join("old.db")).await;
+        let runtime = state.get_or_create_session("diagnostic", tmp.path().to_str().unwrap());
+        runtime.set_status(SessionStatus::Connecting);
+        mark_disconnected_if_still_current(&state, "diagnostic", &old, &RunCompletionReason::Stopped).await;
+        assert_eq!(runtime.get_status(), SessionStatus::Connecting);
+        assert!(runtime.get_pair_state().last_error.is_none());
     }
 }

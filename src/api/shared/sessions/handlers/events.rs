@@ -102,6 +102,8 @@ pub(super) async fn handle_event(
                 .await;
         }
         Event::Disconnected(d) => {
+            runtime.set_qr_codes(vec![]);
+            runtime.set_pair_code(None);
             let reason = format!("{}", d.reason);
             let clean = d.reason.is_clean_shutdown();
             if clean {
