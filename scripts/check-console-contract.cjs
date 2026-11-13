@@ -42,3 +42,4 @@ for (const name of fs.readdirSync('src/console/templates')) {
   }
 }
 console.log(`OK: ${after.__ENDPOINTS__.length} operações com rotas, métodos, campos, valores e vínculos preservados; JavaScript válido.`);
+require('./check-connection-status.cjs');

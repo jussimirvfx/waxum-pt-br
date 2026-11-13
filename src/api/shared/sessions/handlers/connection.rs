@@ -761,7 +761,7 @@ pub(super) async fn mark_disconnected_if_still_current(
 /// Only retain classified causes. Raw transport errors and server-close text
 /// can contain URLs or credentials and must not reach logs or the console.
 fn run_completion_error(completion: &whatsapp_rust::RunCompletionReason) -> Option<String> {
-    use whatsapp_rust::{ConflictKind, ConnectError, ProtocolTerminalReason, RunCompletionReason};
+    use whatsapp_rust::{ConnectError, RunCompletionReason};
     let (connection, connect_error, protocol_error) = match completion {
         RunCompletionReason::ShutdownRequested => return None,
         RunCompletionReason::AlreadyRunning => return Some("already_running".into()),
@@ -775,16 +775,7 @@ fn run_completion_error(completion: &whatsapp_rust::RunCompletionReason) -> Opti
     };
     let mut details = vec!["auto_reconnect_disabled".to_string()];
     if let Some(protocol) = protocol_error {
-        details.push(match protocol {
-            ProtocolTerminalReason::StreamErrorCode(code) => format!("stream_error:{code}"),
-            ProtocolTerminalReason::ConnectFailure(reason) => format!("connect_failure:{reason:?}"),
-            ProtocolTerminalReason::Conflict(ConflictKind::Replaced) => "conflict:replaced".into(),
-            ProtocolTerminalReason::Conflict(ConflictKind::DeviceRemoved) => {
-                "conflict:device_removed".into()
-            }
-            ProtocolTerminalReason::Conflict(_) => "conflict:unknown".into(),
-            _ => "protocol:unclassified".into(),
-        });
+        details.push(protocol_error_label(protocol));
     }
     if let Some(error) = connect_error {
         let kind = match error {
@@ -813,6 +804,18 @@ fn run_completion_error(completion: &whatsapp_rust::RunCompletionReason) -> Opti
         });
     }
     Some(details.join("; "))
+}
+
+pub(super) fn protocol_error_label(protocol: &whatsapp_rust::ProtocolTerminalReason) -> String {
+    use whatsapp_rust::{ConflictKind, ProtocolTerminalReason};
+    match protocol {
+        ProtocolTerminalReason::StreamErrorCode(code) => format!("stream_error:{code}"),
+        ProtocolTerminalReason::ConnectFailure(reason) => format!("connect_failure:{reason:?}"),
+        ProtocolTerminalReason::Conflict(ConflictKind::Replaced) => "conflict:replaced".into(),
+        ProtocolTerminalReason::Conflict(ConflictKind::DeviceRemoved) => "conflict:device_removed".into(),
+        ProtocolTerminalReason::Conflict(_) => "conflict:unknown".into(),
+        _ => "protocol:unclassified".into(),
+    }
 }
 
 pub(super) async fn connect_client(
