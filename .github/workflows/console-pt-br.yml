@@ -2,6 +2,11 @@ name: Console pt-BR
 
 on:
   workflow_dispatch:
+    inputs:
+      build_candidate:
+        description: Build an isolated production candidate after tests
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -14,7 +19,7 @@ env:
 jobs:
   console:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,6 +29,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libssl-dev pkg-config libsqlite3-dev cmake build-essential
+      - name: Cache dependency sources
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: candidate-sources-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: candidate-sources-${{ runner.os }}-
       - name: Contrato das operacoes da interface
         run: node scripts/check-console-contract.cjs
       - name: Mensagens e estados do painel
@@ -31,3 +45,41 @@ jobs:
           cargo test --locked --lib
       - name: Sessoes Web e Cloud no painel
         run: cargo test --locked --test console_cloud
+      - name: Build Linux binary
+        if: ${{ inputs.build_candidate }}
+        run: cargo build --locked --release --target x86_64-unknown-linux-gnu
+      - name: Package compatible runtime
+        if: ${{ inputs.build_candidate }}
+        run: |
+          mkdir -p dist runtime
+          cp target/x86_64-unknown-linux-gnu/release/waxum runtime/waxum
+          cat > runtime/Dockerfile <<'DOCKERFILE'
+          FROM fdciabdul/waxum@sha256:49ea5b8aabe98a4be2ecb2fa05bf804c6a42614250e641ccc6f275b7832d230a
+          COPY --chown=1000:1000 --chmod=0755 waxum /app/waxum
+          DOCKERFILE
+          docker build --label org.opencontainers.image.revision="$GITHUB_SHA" --label org.opencontainers.image.version=0.16.1-pt-br.4 -t waxum-vfx:0.16.1-pt-br.4 runtime
+          docker run --rm --network none waxum-vfx:0.16.1-pt-br.4 /app/waxum --help
+          tar -C runtime -czf dist/waxum-linux-amd64.tar.gz waxum
+          docker save waxum-vfx:0.16.1-pt-br.4 | gzip > dist/waxum-image-linux-amd64.tar.gz
+          printf '%s\n' "$GITHUB_SHA" > dist/source-commit.txt
+          cd dist
+          sha256sum *.tar.gz source-commit.txt > SHA256SUMS
+      - name: Isolated readiness smoke
+        if: ${{ inputs.build_candidate }}
+        run: |
+          docker run -d --name waxum-candidate-smoke --network none --read-only --tmpfs /data:rw,mode=1777,size=64m --tmpfs /tmp:rw,mode=1777,size=32m -e SUPERADMIN_TOKEN=ci-fixture-only -e JWT_SECRET=ci-fixture-secret-only -e DATABASE_URL=sqlite:///data/waxum.db -e SQLITE_PATH=/data/waxum.db -e WHATSAPP_STORAGE_PATH=/data/sessions waxum-vfx:0.16.1-pt-br.4
+          for attempt in $(seq 1 15); do
+            if docker exec waxum-candidate-smoke /app/waxum --healthcheck; then exit 0; fi
+            sleep 1
+          done
+          docker logs waxum-candidate-smoke
+          exit 1
+      - name: Remove isolated smoke container
+        if: ${{ always() && inputs.build_candidate }}
+        run: docker rm -f waxum-candidate-smoke || true
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.build_candidate }}
+        with:
+          name: waxum-production-candidate-linux-amd64
+          path: dist/
+          retention-days: 7
