@@ -1,6 +1,6 @@
 [package]
 name = "waxum"
-version = "0.16.1-pt-br.3"
+version = "0.16.1-pt-br.4"
 edition = "2021"
 authors = ["taqin"]
 license = "MIT"
